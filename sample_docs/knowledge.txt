@@ -1,0 +1,4 @@
+Project Name: AI Studio Chatbot
+Owner: Rabia Shaikh
+Location: Karachi, Pakistan
+Special Feature: Integrates Groq Llama models with Flask Web UI and RAG functionality.

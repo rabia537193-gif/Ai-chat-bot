@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Studio Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: #1e293b;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #334155;
+            justify-content: space-between;
+        }
+
+        .brand {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #38bdf8;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mode-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .mode-btn {
+            background: #334155;
+            color: #94a3b8;
+            border: 1px solid transparent;
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+        }
+
+        .mode-btn:hover {
+            background: #475569;
+            color: #fff;
+        }
+
+        .mode-btn.active {
+            background: #0284c7;
+            color: #fff;
+            border-color: #38bdf8;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+        }
+
+        .lang-box {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid #334155;
+        }
+
+        .lang-box label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .lang-select {
+            width: 100%;
+            padding: 10px;
+            background: #0f172a;
+            color: #38bdf8;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            outline: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0f172a;
+        }
+
+        .chat-header {
+            padding: 20px 32px;
+            border-bottom: 1px solid #1e293b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            background: #1e293b;
+            color: #38bdf8;
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid #334155;
+        }
+
+        .messages-box {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message {
+            max-width: 75%;
+            padding: 14px 18px;
+            border-radius: 14px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: #0284c7;
+            color: #fff;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: #1e293b;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+            border-bottom-left-radius: 2px;
+        }
+
+        .input-area {
+            padding: 20px 32px 28px 32px;
+            background: #0f172a;
+        }
+
+        .input-box {
+            display: flex;
+            gap: 12px;
+            background: #1e293b;
+            padding: 8px 12px 8px 20px;
+            border-radius: 14px;
+            border: 1px solid #334155;
+        }
+
+        .input-box:focus-within {
+            border-color: #38bdf8;
+        }
+
+        input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            outline: none;
+            font-size: 0.95rem;
+        }
+
+        button.send-btn {
+            background: #38bdf8;
+            color: #0f172a;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button.send-btn:hover {
+            background: #7dd3fc;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div>
+            <div class="brand">🤖 Groq AI Studio</div>
+            <div class="mode-selector">
+                <button class="mode-btn active" id="btn-basic" onclick="setMode('basic', this)">💬 Option 1: Basic Chat</button>
+                <button class="mode-btn" id="btn-rag" onclick="setMode('rag', this)">📄 Option 2: RAG Chat</button>
+            </div>
+        </div>
+
+        <div class="lang-box">
+            <label id="lbl-lang">🌐 Select Language / zabaan:</label>
+            <select class="lang-select" id="lang-select" onchange="changeLanguage()">
+                <option value="en" selected>English</option>
+                <option value="ur">Roman Urdu / Urdu</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2 id="mode-title">Basic AI Chat</h2>
+            <span class="badge" id="model-badge">Model: Auto-Detecting</span>
+        </div>
+
+        <div class="messages-box" id="messages">
+            <div class="message assistant" id="welcome-msg">Hello! I am your AI Assistant. Feel free to ask anything!</div>
+        </div>
+
+        <div class="input-area">
+            <div class="input-box">
+                <input type="text" id="user-input" placeholder="Type your message here..." onkeydown="if(event.key==='Enter') sendMessage()">
+                <button class="send-btn" id="send-btn-text" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'basic';
+        let currentLang = 'en';
+        let chatHistory = [];
+
+        const i18n = {
+            en: {
+                opt1: "💬 Option 1: Basic Chat",
+                opt2: "📄 Option 2: RAG Chat",
+                titleBasic: "Basic AI Chat",
+                titleRag: "Document RAG Chat",
+                placeholder: "Type your message here...",
+                sendBtn: "Send",
+                welcome: "Hello! I am your AI Assistant. Feel free to ask anything!",
+                switchBasic: "Switched to BASIC mode. How can I help you today?",
+                switchRag: "Switched to RAG mode. Ask questions based on your document!",
+                langLabel: "🌐 Select Language:"
+            },
+            ur: {
+                opt1: "💬 Option 1: Basic Chat",
+                opt2: "📄 Option 2: RAG Chat",
+                titleBasic: "Basic AI Chat (Urdu)",
+                titleRag: "Document RAG Chat (Urdu)",
+                placeholder: "Apna message yahan likhein...",
+                sendBtn: "Bheinjein",
+                welcome: "Hello! Main aapka AI Assistant hoon. Poochhein jo poochhna chahte hain!",
+                switchBasic: "BASIC mode active ho gaya hai. Aap kya poochna chahte hain?",
+                switchRag: "RAG mode active ho gaya hai. Apne document ke baare mein poochein!",
+                langLabel: "🌐 Zabaan Muntakhib Karein:"
+            }
+        };
+
+        function changeLanguage() {
+            currentLang = document.getElementById('lang-select').value;
+            const t = i18n[currentLang];
+
+            document.getElementById('btn-basic').innerText = t.opt1;
+            document.getElementById('btn-rag').innerText = t.opt2;
+            document.getElementById('mode-title').innerText = currentMode === 'basic' ? t.titleBasic : t.titleRag;
+            document.getElementById('user-input').placeholder = t.placeholder;
+            document.getElementById('send-btn-text').innerText = t.sendBtn;
+            document.getElementById('lbl-lang').innerText = t.langLabel;
+            
+            chatHistory = [];
+            const msg = currentMode === 'basic' ? t.switchBasic : t.switchRag;
+            document.getElementById('messages').innerHTML = `<div class="message assistant">${msg}</div>`;
+        }
+
+        function setMode(mode, btn) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const t = i18n[currentLang];
+            document.getElementById('mode-title').innerText = mode === 'basic' ? t.titleBasic : t.titleRag;
+            chatHistory = [];
+            const msg = mode === 'basic' ? t.switchBasic : t.switchRag;
+            document.getElementById('messages').innerHTML = `<div class="message assistant">${msg}</div>`;
+        }
+
+        async function sendMessage() {
+            const inputField = document.getElementById('user-input');
+            const message = inputField.value.trim();
+            if (!message) return;
+
+            appendMessage('user', message);
+            inputField.value = '';
+
+            chatHistory.push({"role": "user", "content": message});
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mode: currentMode,
+                        language: currentLang,
+                        message: message,
+                        messages: chatHistory
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    appendMessage('assistant', data.reply);
+                    chatHistory.push({"role": "assistant", "content": data.reply});
+                    document.getElementById('model-badge').innerText = `Model: ${data.model}`;
+                } else {
+                    appendMessage('assistant', `Error: ${data.error}`);
+                }
+            } catch (err) {
+                appendMessage('assistant', 'Error: Request failed.');
+            }
+        }
+
+        function appendMessage(sender, text) {
+            const box = document.getElementById('messages');
+            const msg = document.createElement('div');
+            msg.className = `message ${sender}`;
+            msg.innerText = text;
+            box.appendChild(msg);
+            box.scrollTop = box.scrollHeight;
+        }
+    </script>
+</body>
+</html>
