@@ -32,14 +32,22 @@ async def chat_endpoint(req: ChatRequest):
                 status_code=500,
                 content={
                     "success": False,
-                    "error": "GROQ_API_KEY is missing in Vercel settings."
+                    "error": "GROQ_API_KEY is missing in environment variables."
                 }
             )
 
         client = groq.Groq(api_key=api_key)
 
         models_page = client.models.list()
-        active_models = [m.id for m in models_page.data if getattr(m, "active", True)]
+        
+        # Filter out non-chat models like prompt-guard, whisper, and vision-only tools
+        active_models = [
+            m.id for m in models_page.data 
+            if getattr(m, "active", True) 
+            and "prompt-guard" not in m.id 
+            and "whisper" not in m.id
+            and "allam" not in m.id
+        ]
 
         preferred_order = [
             "llama-3.3-70b-versatile",
@@ -55,7 +63,7 @@ async def chat_endpoint(req: ChatRequest):
                 status_code=500,
                 content={
                     "success": False,
-                    "error": "No active models available for this GROQ API key."
+                    "error": "No valid chat models available for this GROQ API key."
                 }
             )
 
@@ -63,15 +71,22 @@ async def chat_endpoint(req: ChatRequest):
         used_model = ""
         last_err = None
 
-        # Build message context
+        # Build message history context
         messages_to_send = []
+        
+        # Adding system prompt based on language preference
+        system_prompt = "You are a helpful AI assistant."
+        if req.language == "ur":
+            system_prompt = "Aap ek madadgar AI assistant hain. User ke sawalon ke jawab Roman Urdu ya Urdu mein dein."
+        
+        messages_to_send.append({"role": "system", "content": system_prompt})
+
         if req.messages:
             for msg in req.messages:
                 if isinstance(msg, dict) and "role" in msg and "content" in msg:
                     messages_to_send.append({"role": msg["role"], "content": msg["content"]})
-        
-        if not messages_to_send:
-            messages_to_send = [{"role": "user", "content": req.message}]
+        else:
+            messages_to_send.append({"role": "user", "content": req.message})
 
         for model_id in ordered_models:
             try:
@@ -97,7 +112,6 @@ async def chat_endpoint(req: ChatRequest):
 
         reply_text = response.choices[0].message.content
         
-        # Matches frontend `data.success`, `data.reply`, and `data.model`
         return JSONResponse(
             status_code=200, 
             content={
@@ -118,4 +132,4 @@ async def chat_endpoint(req: ChatRequest):
 
 @app.get("/")
 async def root():
-    return {"message": "Backend is running"}
+    return {"message": "Backend is running successfully"}
