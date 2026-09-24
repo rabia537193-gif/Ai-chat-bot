@@ -31,18 +31,15 @@ async def chat_endpoint(req: ChatRequest):
 
         client = groq.Groq(api_key=api_key)
 
-        # 1. Groq ki account-active models ki list dynamically fetch karein
         models_page = client.models.list()
         active_models = [m.id for m in models_page.data if getattr(m, "active", True)]
 
-        # Soft preferences if available in active list
         preferred_order = [
             "llama-3.3-70b-versatile",
             "llama-3.1-8b-instant",
             "mixtral-8x7b-32768"
         ]
 
-        # Order active models: preferred first, then remaining active ones
         ordered_models = [m for m in preferred_order if m in active_models]
         ordered_models += [m for m in active_models if m not in ordered_models]
 
@@ -52,7 +49,6 @@ async def chat_endpoint(req: ChatRequest):
                 content={"error": "No active models available for this GROQ API key."}
             )
 
-        # 2. Try against available active models dynamically
         response = None
         last_err = None
 
@@ -75,7 +71,18 @@ async def chat_endpoint(req: ChatRequest):
             )
 
         reply_text = response.choices[0].message.content
-        return JSONResponse(status_code=200, content={"reply": reply_text, "response": reply_text})
+        
+        # Standardize keys to match all common frontend response formats
+        return JSONResponse(
+            status_code=200, 
+            content={
+                "reply": reply_text, 
+                "response": reply_text,
+                "message": reply_text,
+                "text": reply_text,
+                "bot": reply_text
+            }
+        )
 
     except Exception as e:
         return JSONResponse(
