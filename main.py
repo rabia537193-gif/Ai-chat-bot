@@ -7,7 +7,6 @@ import groq
 
 app = FastAPI()
 
-# Allow CORS for all domains
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,9 +31,10 @@ async def chat_endpoint(req: ChatRequest):
 
         client = groq.Groq(api_key=api_key)
         
+        # Updated Model Name
         response = client.chat.completions.create(
             messages=[{"role": "user", "content": req.message}],
-            model="llama3-8b-8192"
+            model="llama-3.1-8b-instant"
         )
         
         reply_text = response.choices[0].message.content
