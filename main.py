@@ -18,16 +18,6 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
 
-# List of models to try in order of priority
-MODELS_TO_TRY = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
-    "llama3-8b-8192",
-    "llama3-70b-8192",
-    "mixtral-8x7b-32768",
-    "gemma2-9b-it"
-]
-
 @app.post("/chat")
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
@@ -40,27 +30,48 @@ async def chat_endpoint(req: ChatRequest):
             )
 
         client = groq.Groq(api_key=api_key)
-        
-        response = None
-        last_error = None
 
-        # Try models one by one until one works
-        for model_name in MODELS_TO_TRY:
+        # 1. Groq ki account-active models ki list dynamically fetch karein
+        models_page = client.models.list()
+        active_models = [m.id for m in models_page.data if getattr(m, "active", True)]
+
+        # Soft preferences if available in active list
+        preferred_order = [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "mixtral-8x7b-32768"
+        ]
+
+        # Order active models: preferred first, then remaining active ones
+        ordered_models = [m for m in preferred_order if m in active_models]
+        ordered_models += [m for m in active_models if m not in ordered_models]
+
+        if not ordered_models:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "No active models available for this GROQ API key."}
+            )
+
+        # 2. Try against available active models dynamically
+        response = None
+        last_err = None
+
+        for model_id in ordered_models:
             try:
                 response = client.chat.completions.create(
                     messages=[{"role": "user", "content": req.message}],
-                    model=model_name
+                    model=model_id
                 )
                 if response:
                     break
-            except Exception as err:
-                last_error = err
+            except Exception as e:
+                last_err = e
                 continue
 
         if not response:
             return JSONResponse(
                 status_code=500,
-                content={"error": f"Failed with all models. Last error: {str(last_error)}"}
+                content={"error": f"Failed across active models. Last error: {str(last_err)}"}
             )
 
         reply_text = response.choices[0].message.content
