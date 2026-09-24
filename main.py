@@ -1,13 +1,13 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 import groq
 
-# FastAPI instance
 app = FastAPI()
 
-# Enable CORS taake frontend aur backend aapas mein communicate kar sakein
+# Allow CORS for all domains
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,18 +16,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Request schema definition
 class ChatRequest(BaseModel):
     message: str
 
-# Combined route handler for /chat and /api/chat
 @app.post("/chat")
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
     try:
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
-            raise HTTPException(status_code=500, detail="GROQ_API_KEY environment variable is not set")
+            return JSONResponse(
+                status_code=500,
+                content={"error": "GROQ_API_KEY is missing in Vercel settings."}
+            )
 
         client = groq.Groq(api_key=api_key)
         
@@ -36,10 +37,15 @@ async def chat_endpoint(req: ChatRequest):
             model="llama3-8b-8192"
         )
         
-        return {"reply": response.choices[0].message.content}
+        reply_text = response.choices[0].message.content
+        return JSONResponse(status_code=200, content={"reply": reply_text, "response": reply_text})
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
 
 @app.get("/")
 async def root():
-    return {"status": "Backend is running fine"}
+    return {"message": "Backend is running"}
