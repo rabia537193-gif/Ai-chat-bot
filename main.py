@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional, List, Any
 import os
 import groq
 
@@ -17,6 +18,9 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     message: str
+    mode: Optional[str] = "basic"
+    language: Optional[str] = "en"
+    messages: Optional[List[Any]] = None
 
 @app.post("/chat")
 @app.post("/api/chat")
@@ -26,7 +30,10 @@ async def chat_endpoint(req: ChatRequest):
         if not api_key:
             return JSONResponse(
                 status_code=500,
-                content={"error": "GROQ_API_KEY is missing in Vercel settings."}
+                content={
+                    "success": False,
+                    "error": "GROQ_API_KEY is missing in Vercel settings."
+                }
             )
 
         client = groq.Groq(api_key=api_key)
@@ -46,19 +53,34 @@ async def chat_endpoint(req: ChatRequest):
         if not ordered_models:
             return JSONResponse(
                 status_code=500,
-                content={"error": "No active models available for this GROQ API key."}
+                content={
+                    "success": False,
+                    "error": "No active models available for this GROQ API key."
+                }
             )
 
         response = None
+        used_model = ""
         last_err = None
+
+        # Build message context
+        messages_to_send = []
+        if req.messages:
+            for msg in req.messages:
+                if isinstance(msg, dict) and "role" in msg and "content" in msg:
+                    messages_to_send.append({"role": msg["role"], "content": msg["content"]})
+        
+        if not messages_to_send:
+            messages_to_send = [{"role": "user", "content": req.message}]
 
         for model_id in ordered_models:
             try:
                 response = client.chat.completions.create(
-                    messages=[{"role": "user", "content": req.message}],
+                    messages=messages_to_send,
                     model=model_id
                 )
                 if response:
+                    used_model = model_id
                     break
             except Exception as e:
                 last_err = e
@@ -67,27 +89,31 @@ async def chat_endpoint(req: ChatRequest):
         if not response:
             return JSONResponse(
                 status_code=500,
-                content={"error": f"Failed across active models. Last error: {str(last_err)}"}
+                content={
+                    "success": False,
+                    "error": f"Failed across models. Last error: {str(last_err)}"
+                }
             )
 
         reply_text = response.choices[0].message.content
         
-        # Standardize keys to match all common frontend response formats
+        # Matches frontend `data.success`, `data.reply`, and `data.model`
         return JSONResponse(
             status_code=200, 
             content={
-                "reply": reply_text, 
-                "response": reply_text,
-                "message": reply_text,
-                "text": reply_text,
-                "bot": reply_text
+                "success": True,
+                "reply": reply_text,
+                "model": used_model
             }
         )
 
     except Exception as e:
         return JSONResponse(
             status_code=500,
-            content={"error": str(e)}
+            content={
+                "success": False,
+                "error": str(e)
+            }
         )
 
 @app.get("/")
