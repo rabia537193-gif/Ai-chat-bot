@@ -31,10 +31,10 @@ async def chat_endpoint(req: ChatRequest):
 
         client = groq.Groq(api_key=api_key)
         
-        # Updated Model Name
+        # Updated Active Groq Model Name
         response = client.chat.completions.create(
             messages=[{"role": "user", "content": req.message}],
-            model="llama-3.1-8b-instant"
+            model="llama-3.3-70b-versatile"
         )
         
         reply_text = response.choices[0].message.content
