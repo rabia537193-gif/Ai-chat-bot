@@ -12,11 +12,11 @@
   ],
   "routes": [
     {
-      "src": "/chat(.*)",
+      "src": "/chat",
       "dest": "main.py"
     },
     {
-      "src": "/api/(.*)",
+      "src": "/api/chat",
       "dest": "main.py"
     },
     {
